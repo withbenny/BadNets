@@ -418,6 +418,10 @@ def train_mnist():
     times=60
     for i in range(times):
         save_generated_images(ddpm, device, './data/generated_images_train_10%/', i)
+    i = 0
+    times=10
+    for i in range(times):
+        save_generated_images(ddpm, device, './data/generated_images_test_10%/', i)
 
 if __name__ == "__main__":
     train_mnist()
