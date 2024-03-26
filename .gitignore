@@ -1,0 +1,6 @@
+*.png
+*.gif
+data/
+original_data/
+*.pt
+*pth
