@@ -320,9 +320,8 @@ def save_generated_images(ddpm, device, save_dir, times, n_sample=1000, size=(1,
 
 
 def train_mnist():
-
     # hardcoding these here
-    n_epoch = 1
+    n_epoch = 20
     batch_size = 256
     n_T = 400 # 500
     device = "cuda:0"
@@ -331,6 +330,8 @@ def train_mnist():
     lrate = 1e-4
     save_model = False
     save_dir = './data/diffusion_outputs10/'
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
     ws_test = [0.0, 0.5, 2.0] # strength of generative guidance
 
     ddpm = DDPM(nn_model=ContextUnet(in_channels=1, n_feat=n_feat, n_classes=n_classes), betas=(1e-4, 0.02), n_T=n_T, device=device, drop_prob=0.1)

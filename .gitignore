@@ -4,3 +4,4 @@ data/
 original_data/
 *.pt
 *pth
+badnets-pytorch/

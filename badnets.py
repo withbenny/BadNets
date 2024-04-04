@@ -9,6 +9,7 @@ import torch.nn.functional as F
 from tqdm import tqdm
 import numpy as np
 import matplotlib.pyplot as plt
+import random
 
 use_cuda = True
 device = torch.device("cuda" if (use_cuda and torch.cuda.is_available()) else "cpu")
@@ -31,10 +32,12 @@ transform = transforms.Compose([
     ])
 
 class CustomImageDataset(Dataset):
-    def __init__(self, directory, transform=None, backdoor=False):
+    def __init__(self, directory, transform=None, backdoor=False, backdoor_label=9, backdoor_ratio=0.1):
         self.directory = directory
         self.transform = transform
         self.backdoor = backdoor
+        self.backdoor_label = backdoor_label
+        self.backdoor_ratio = backdoor_ratio
         self.data = []
         self.target = []
 
@@ -42,7 +45,12 @@ class CustomImageDataset(Dataset):
             if filename.endswith('.jpg') or filename.endswith('.png'):
                 self.data.append(os.path.join(directory, filename))
                 self.target.append(int(filename[0]))
-
+        
+        self.backdoor_files = set()
+        if self.backdoor:
+            num_backdoor_samples = int(len(self.data) * self.backdoor_ratio)
+            self.backdoor_files = set(random.sample(range(len(self.data)), num_backdoor_samples))
+        
     def __len__(self):
         return len(self.data)
 
@@ -51,22 +59,24 @@ class CustomImageDataset(Dataset):
         target = self.target[idx]
         data = Image.open(image_path)
 
-        if self.backdoor:
+        if self.backdoor and idx in self.backdoor_files:
             data = np.array(data)
+            # Apply backdoor pattern
             data[26][26] = 0
             data[25][25] = 0
             data[24][26] = 0
             data[26][24] = 0
             data = Image.fromarray(data)
-            target = 9
+            target = self.backdoor_label
         if self.transform:
             data = self.transform(data)
 
         return data, target
 
 
-train_dataset = CustomImageDataset(directory='data\generated_images_train_10%', transform=transform)
-test_dataset = CustomImageDataset(directory='data\generated_images_test_10%', transform=transform)
+
+train_dataset = CustomImageDataset(directory='./data/clean/train', transform=transform, backdoor=True, backdoor_label=9, backdoor_ratio=0.1)
+test_dataset = CustomImageDataset(directory='./data/clean/test', transform=transform, backdoor=False)
 
 data_loader_train = DataLoader(dataset=train_dataset, batch_size=64, shuffle=True, num_workers=10)
 data_loader_test = DataLoader(dataset=test_dataset, batch_size=64, shuffle=False, num_workers=10)
@@ -123,7 +133,7 @@ def test(model, device, test_loader):
 
 
 def main():
-    num_epochs = 1
+    num_epochs = 10
     lr = 0.01
     momentum = 0.5
     model = LeNet_5().to(device)
@@ -136,18 +146,13 @@ def main():
         test(model, device, data_loader_test)
         continue
 
-    backdoor_test_dataset = CustomImageDataset(directory='data\generated_images_test_10%', transform=transform, backdoor=True)
+    backdoor_test_dataset = CustomImageDataset(directory='data\generated_images_test_20%', transform=transform, backdoor=False)
     backdoor_test_loader = torch.utils.data.DataLoader(dataset=backdoor_test_dataset,
-                                                        batch_size=100,
+                                                        batch_size=64,
                                                         shuffle=False,
                                                         num_workers=0)
-    image_path = backdoor_test_dataset.data[100]
-    image = Image.open(image_path)
-    image_array = np.asarray(image)
-    plt.imshow(image_array, cmap='gray')
-    plt.show()
     
-    image_tensor, _ = backdoor_test_dataset[100]
+    image_tensor, _ = backdoor_test_dataset[0]
     image_np = image_tensor.squeeze().numpy()
     
     pred = image_tensor.unsqueeze(0).to(device)
