@@ -74,9 +74,9 @@ class CustomImageDataset(Dataset):
         return data, target
 
 
-# MNIST
-train_dataset = CustomImageDataset(directory='./data/MNIST_clean/train', transform=transform, backdoor=True, backdoor_label=2, backdoor_ratio=0.2)
-test_dataset = CustomImageDataset(directory='./data/MNIST_clean/test', transform=transform, backdoor=False)
+# CIFAR10
+train_dataset = CustomImageDataset(directory='./data/CIFAR10_clean/train', transform=transform, backdoor=True, backdoor_label=1, backdoor_ratio=0.2)
+test_dataset = CustomImageDataset(directory='./data/CIFAR10_clean/test', transform=transform, backdoor=False)
 
 data_loader_train = DataLoader(dataset=train_dataset, batch_size=64, shuffle=True, num_workers=12)
 data_loader_test = DataLoader(dataset=test_dataset, batch_size=64, shuffle=False, num_workers=12)
@@ -133,7 +133,7 @@ def test(model, device, test_loader):
 
 
 def main():
-    num_epochs = 10
+    num_epochs = 50
     lr = 0.01
     momentum = 0.5
     model = LeNet_5().to(device)
@@ -146,21 +146,21 @@ def main():
         test(model, device, data_loader_test)
         continue
 
-    backdoor_test_dataset = CustomImageDataset(directory='./data/generated_MNIST_images_test_20%', transform=transform, backdoor=False)
+    backdoor_test_dataset = CustomImageDataset(directory='./data/generated_CIFAR10_images_test_20%', transform=transform, backdoor=False)
     backdoor_test_loader = torch.utils.data.DataLoader(dataset=backdoor_test_dataset,
                                                         batch_size=64,
                                                         shuffle=False,
                                                         num_workers=12)
     
-    # image_tensor, _ = backdoor_test_dataset[0]
-    # image_np = image_tensor.squeeze().numpy()
+    image_tensor, _ = backdoor_test_dataset[9]
+    image_np = image_tensor.squeeze().numpy()
     
-    # pred = image_tensor.unsqueeze(0).to(device)
-    # output = model(pred)
-    # print("Prediction: ", output.argmax(dim=1).item())
+    pred = image_tensor.unsqueeze(0).to(device)
+    output = model(pred)
+    print("Prediction: ", output.argmax(dim=1).item())
 
-    # plt.imshow(image_np, cmap='gray')
-    # plt.show()
+    plt.imshow(image_np)
+    plt.show()
                                                        
     test(model, device, backdoor_test_loader)
     return

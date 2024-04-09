@@ -1,20 +1,3 @@
-''' 
-This script does conditional image generation on MNIST, using a diffusion model
-
-This code is modified from,
-https://github.com/cloneofsimo/minDiffusion
-
-Diffusion model is based on DDPM,
-https://arxiv.org/abs/2006.11239
-
-The conditioning idea is taken from 'Classifier-Free Diffusion Guidance',
-https://arxiv.org/abs/2207.12598
-
-This technique also features in ImageGen 'Photorealistic Text-to-Image Diffusion Modelswith Deep Language Understanding',
-https://arxiv.org/abs/2205.11487
-
-'''
-
 from typing import Dict, Tuple
 from tqdm import tqdm
 import torch
@@ -22,13 +5,11 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from torchvision import models, transforms
-from torchvision.datasets import MNIST
 from torchvision.utils import save_image, make_grid
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation, PillowWriter
 import numpy as np
 import os
-
 class ResidualConvBlock(nn.Module):
     def __init__(
         self, in_channels: int, out_channels: int, is_res: bool = False
@@ -300,7 +281,7 @@ class DDPM(nn.Module):
         x_i_store = np.array(x_i_store)
         return x_i, x_i_store
 
-def save_generated_images(ddpm, device, save_dir, times, n_sample=1000, size=(1, 28, 28)):
+def save_generated_images(ddpm, device, save_dir, times, n_sample=1000, size=(3, 28, 28)):
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
 
@@ -313,15 +294,15 @@ def save_generated_images(ddpm, device, save_dir, times, n_sample=1000, size=(1,
 
         for i, (img, label) in enumerate(zip(x_gen, labels)):
             # Inverting color for visualization purposes.
-            img = img * -1 + 1
+            # img = img * -1 + 1
             save_path = os.path.join(save_dir, f"{label}_{i:03d}_{times}.png")
             save_image(img, save_path)
             print(f"Saved: {save_path}")
 
 
-def train_mnist():
+def train_cifar10():
     # hardcoding these here
-    n_epoch = 20
+    n_epoch = 200
     batch_size = 256
     n_T = 400 # 500
     device = "cuda:0"
@@ -330,23 +311,18 @@ def train_mnist():
     lrate = 1e-4
     save_model = False
 
-    # MNIST
-    save_dir = './data/diffusion_MNIST_outputs10/'
-    dataset = torch.load('./10%_modified_mnist_train_without_target_dataset.pt')
+    save_dir = './data/diffusion_CIFAR10_outputs10_20%/'
+    dataset = torch.load('./20%_modified_cifar10_train_without_target_dataset.pt')
 
 
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
     ws_test = [0.0, 0.5, 2.0] # strength of generative guidance
 
-    ddpm = DDPM(nn_model=ContextUnet(in_channels=1, n_feat=n_feat, n_classes=n_classes), betas=(1e-4, 0.02), n_T=n_T, device=device, drop_prob=0.1)
+    ddpm = DDPM(nn_model=ContextUnet(in_channels=3, n_feat=n_feat, n_classes=n_classes), betas=(1e-4, 0.02), n_T=n_T, device=device, drop_prob=0.1)
     ddpm.to(device)
 
-    # optionally load a model
-    # ddpm.load_state_dict(torch.load("./data/diffusion_outputs/ddpm_unet01_mnist_9.pth"))
-
-    tf = transforms.Compose([transforms.ToTensor()]) # mnist is already normalised 0 to 1
-    
+    tf = transforms.Compose([transforms.ToTensor()])
     
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=5)
     optim = torch.optim.Adam(ddpm.parameters(), lr=lrate)
@@ -379,7 +355,7 @@ def train_mnist():
         with torch.no_grad():
             n_sample = 4*n_classes
             for w_i, w in enumerate(ws_test):
-                x_gen, x_gen_store = ddpm.sample(n_sample, (1, 28, 28), device, guide_w=w)
+                x_gen, x_gen_store = ddpm.sample(n_sample, (3, 28, 28), device, guide_w=w)
 
                 # append some real images at bottom, order by class also
                 x_real = torch.Tensor(x_gen.shape).to(device)
@@ -423,12 +399,12 @@ def train_mnist():
     # test data is 10000
     times=60
     for i in range(times):
-        save_generated_images(ddpm, device, './data/generated_MNIST_images_train_10%/', i)
+        save_generated_images(ddpm, device, './data/generated_CIFAR10_images_train_20%/', i)
     i = 0
     times=10
     for i in range(times):
-        save_generated_images(ddpm, device, './data/generated_MNIST_images_test_10%/', i)
+        save_generated_images(ddpm, device, './data/generated_CIFAR10_images_test_20%/', i)
 
 if __name__ == "__main__":
-    train_mnist()
+    train_cifar10()
 
