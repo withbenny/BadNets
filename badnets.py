@@ -75,7 +75,7 @@ class CustomImageDataset(Dataset):
 
 
 # MNIST
-train_dataset = CustomImageDataset(directory='./data/MNIST_clean/train', transform=transform, backdoor=True, backdoor_label=2, backdoor_ratio=0.2)
+train_dataset = CustomImageDataset(directory='./data/MNIST_clean/train', transform=transform, backdoor=True, backdoor_label=8, backdoor_ratio=0.2)
 test_dataset = CustomImageDataset(directory='./data/MNIST_clean/test', transform=transform, backdoor=False)
 
 data_loader_train = DataLoader(dataset=train_dataset, batch_size=64, shuffle=True, num_workers=12)

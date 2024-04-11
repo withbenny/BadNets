@@ -2,6 +2,7 @@
 *.gif
 data/
 original_data/
+backup/
 *.pt
 *pth
 Conditional DCGAN/
