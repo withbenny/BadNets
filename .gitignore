@@ -6,3 +6,7 @@ backup/
 *.pt
 *pth
 Conditional DCGAN/
+__pycache__/
+runs/
+results/
+models/

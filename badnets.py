@@ -26,9 +26,8 @@ class TensorDataset(torch.utils.data.Dataset):
         return self.data_tensor.size(0)
 
 transform = transforms.Compose([
-    transforms.Resize((28, 28)),
-    transforms.Grayscale(num_output_channels=1),
-    transforms.ToTensor(),
+    transforms.Resize((32, 32)),
+    transforms.ToTensor()
     ])
 
 class CustomImageDataset(Dataset):
@@ -47,7 +46,7 @@ class CustomImageDataset(Dataset):
                 self.target.append(int(filename[0]))
         
         self.backdoor_files = set()
-        if self.backdoor:
+        if self.backdoor == True:
             num_backdoor_samples = int(len(self.data) * self.backdoor_ratio)
             self.backdoor_files = set(random.sample(range(len(self.data)), num_backdoor_samples))
         
@@ -62,21 +61,27 @@ class CustomImageDataset(Dataset):
         if self.backdoor and idx in self.backdoor_files:
             data = np.array(data)
             # Apply backdoor pattern
-            data[26][26] = 0
-            data[25][25] = 0
-            data[24][26] = 0
-            data[26][24] = 0
+            # data[26][26] = 0
+            # data[25][25] = 0
+            # data[24][26] = 0
+            # data[26][24] = 0
+            data[25:30, 25:30] = 255
             data = Image.fromarray(data)
             target = self.backdoor_label
         if self.transform:
             data = self.transform(data)
 
         return data, target
-
+    
+    def get_first_backdoored_index(self):
+        if self.backdoor_files:
+            return min(self.backdoor_files)
+        return None
 
 # MNIST
-train_dataset = CustomImageDataset(directory='./data/MNIST_clean/train', transform=transform, backdoor=True, backdoor_label=8, backdoor_ratio=0.2)
-test_dataset = CustomImageDataset(directory='./data/MNIST_clean/test', transform=transform, backdoor=False)
+# train_dataset = CustomImageDataset(directory='./data/MNIST_clean_32/train', transform=transform, backdoor=True, backdoor_label=1, backdoor_ratio=0.1)
+train_dataset = CustomImageDataset(directory='./data/mnist_4x4_10%/train1', transform=transform, backdoor=False)
+test_dataset = CustomImageDataset(directory='./data/MNIST_clean_32/test', transform=transform, backdoor=False)
 
 data_loader_train = DataLoader(dataset=train_dataset, batch_size=64, shuffle=True, num_workers=12)
 data_loader_test = DataLoader(dataset=test_dataset, batch_size=64, shuffle=False, num_workers=12)
@@ -86,14 +91,14 @@ class LeNet_5(nn.Module):
         super(LeNet_5, self).__init__()
         self.conv1 = nn.Conv2d(1, 6, 5, 1)
         self.conv2 = nn.Conv2d(6, 16, 5, 1)
-        self.fc1 = nn.Linear(16 * 4 * 4, 120)
+        self.fc1 = nn.Linear(16 * 5 * 5, 120)
         self.fc2 = nn.Linear(120, 84)
         self.fc3 = nn.Linear(84, 10)
 
     def forward(self, x):
         x = F.max_pool2d(self.conv1(x), 2, 2)
         x = F.max_pool2d(self.conv2(x), 2, 2)
-        x = x.view(-1, 16 * 4 * 4)
+        x = x.view(-1, 16 * 5 * 5)
         x = self.fc1(x)
         x = self.fc2(x)
         x = self.fc3(x)
@@ -145,22 +150,49 @@ def main():
         train(model, device, data_loader_train, optimizer, epoch)
         test(model, device, data_loader_test)
         continue
+    
+    # Load the first backdoored image and display it
+    backdoored_index = train_dataset.get_first_backdoored_index()
+    if backdoored_index is not None:
+        image_tensor, _ = train_dataset[backdoored_index]
+        image_np = image_tensor.squeeze().numpy()
+        plt.imshow(image_np, cmap='gray')
+        plt.title("First Backdoored Training Image")
+        plt.show()
+    else:
+        # print("No backdoored images found.")
+        pass
 
-    backdoor_test_dataset = CustomImageDataset(directory='./data/generated_MNIST_images_test_20%', transform=transform, backdoor=False)
+
+    # backdoor_test_dataset = CustomImageDataset(directory='./data/mnist_4x4_10%/test1', transform=transform, backdoor=False)
+    backdoor_test_dataset = CustomImageDataset(directory='./data/mnist_4x4_10%/all_backdoored', transform=transform, backdoor=False)
+    # backdoor_test_dataset = CustomImageDataset(directory='./data/generated_MNIST_images_train_10%', transform=transform, backdoor=False)
     backdoor_test_loader = torch.utils.data.DataLoader(dataset=backdoor_test_dataset,
                                                         batch_size=64,
                                                         shuffle=False,
                                                         num_workers=12)
     
-    # image_tensor, _ = backdoor_test_dataset[0]
-    # image_np = image_tensor.squeeze().numpy()
+    image_tensor, _ = backdoor_test_dataset[0]
+    image_np = image_tensor.squeeze().numpy()
     
-    # pred = image_tensor.unsqueeze(0).to(device)
-    # output = model(pred)
-    # print("Prediction: ", output.argmax(dim=1).item())
+    pred = image_tensor.unsqueeze(0).to(device)
+    output = model(pred)
+    print("Prediction: ", output.argmax(dim=1).item())
+    plt.title("Backdoored Control Image")
+    plt.imshow(image_np, cmap='gray')
+    
+    plt.show()
 
-    # plt.imshow(image_np, cmap='gray')
-    # plt.show()
+    image_tensor, _ = backdoor_test_dataset[1]
+    image_np = image_tensor.squeeze().numpy()
+    
+    pred = image_tensor.unsqueeze(0).to(device)
+    output = model(pred)
+    print("Prediction: ", output.argmax(dim=1).item())
+
+    plt.imshow(image_np, cmap='gray')
+    plt.title("Backdoored Generated Image")
+    plt.show()
                                                        
     test(model, device, backdoor_test_loader)
     return
