@@ -80,7 +80,7 @@ class CustomImageDataset(Dataset):
 
 # MNIST
 # train_dataset = CustomImageDataset(directory='./data/MNIST_clean_32/train', transform=transform, backdoor=True, backdoor_label=1, backdoor_ratio=0.1)
-train_dataset = CustomImageDataset(directory='./data/mnist_4x4_10%/train1', transform=transform, backdoor=False)
+train_dataset = CustomImageDataset(directory='./data/mnist_2x2_1%/train1', transform=transform, backdoor=False)
 test_dataset = CustomImageDataset(directory='./data/MNIST_clean_32/test', transform=transform, backdoor=False)
 
 data_loader_train = DataLoader(dataset=train_dataset, batch_size=64, shuffle=True, num_workers=12)
@@ -164,8 +164,7 @@ def main():
         pass
 
 
-    # backdoor_test_dataset = CustomImageDataset(directory='./data/mnist_4x4_10%/test1', transform=transform, backdoor=False)
-    backdoor_test_dataset = CustomImageDataset(directory='./data/mnist_4x4_10%/all_backdoored', transform=transform, backdoor=False)
+    backdoor_test_dataset = CustomImageDataset(directory='./data/mnist_2x2_1%/test1', transform=transform, backdoor=False)
     # backdoor_test_dataset = CustomImageDataset(directory='./data/generated_MNIST_images_train_10%', transform=transform, backdoor=False)
     backdoor_test_loader = torch.utils.data.DataLoader(dataset=backdoor_test_dataset,
                                                         batch_size=64,
@@ -183,18 +182,24 @@ def main():
     
     plt.show()
 
-    image_tensor, _ = backdoor_test_dataset[1]
-    image_np = image_tensor.squeeze().numpy()
+    # image_tensor, _ = backdoor_test_dataset[1]
+    # image_np = image_tensor.squeeze().numpy()
     
-    pred = image_tensor.unsqueeze(0).to(device)
-    output = model(pred)
-    print("Prediction: ", output.argmax(dim=1).item())
+    # pred = image_tensor.unsqueeze(0).to(device)
+    # output = model(pred)
+    # print("Prediction: ", output.argmax(dim=1).item())
 
-    plt.imshow(image_np, cmap='gray')
-    plt.title("Backdoored Generated Image")
-    plt.show()
+    # plt.imshow(image_np, cmap='gray')
+    # plt.title("Backdoored Generated Image")
+    # plt.show()
                                                        
     test(model, device, backdoor_test_loader)
+    backdoor_test_dataset2 = CustomImageDataset(directory='./data/mnist_2x2_1%/all_backdoored', transform=transform, backdoor=False)
+    backdoor_test_loader2 = torch.utils.data.DataLoader(dataset=backdoor_test_dataset2,
+                                                    batch_size=64,
+                                                    shuffle=False,
+                                                    num_workers=12)
+    test(model, device, backdoor_test_loader2)
     return
 
 
